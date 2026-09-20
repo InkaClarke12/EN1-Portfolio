@@ -122,10 +122,36 @@ pre code, pre code {
 .proj-video-container {
     position: relative;
     width: 100%;
-    padding-top: 56.25%;
+    aspect-ratio: 16 / 9;
     margin: 20px 0;
     border-radius: var(--radius);
     overflow: hidden;
+}
+
+.video-label {
+    margin: 0;
+    color: var(--color-primary);
+    font-weight: bold;
+}
+
+.video-description {
+    margin-bottom: 8px;
+}
+
+.thumbnail-video {
+    aspect-ratio: auto;
+    width: 110%;
+    margin: 0 0 0 -5%;
+}
+
+.proj-video-container.thumbnail-video a,
+.proj-video-container.thumbnail-video img {
+    position: static;
+}
+
+.proj-video-container.thumbnail-video img {
+    height: auto;
+    object-fit: initial;
 }
 
 .proj-video-container iframe {
@@ -135,6 +161,20 @@ pre code, pre code {
     width: 100%;
     height: 100%;
     border: 0;
+}
+
+.proj-video-container a,
+.proj-video-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.proj-video-container img {
+    object-fit: cover;
 }
 
 /* ***************************** */
