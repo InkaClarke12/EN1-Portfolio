@@ -152,7 +152,23 @@ body {
     width: 100%;
     aspect-ratio: 4 / 3;
     object-fit: cover;
+    object-position: center;
     border-radius: calc(var(--radius) - 4px);
+}
+
+.project-img-joker {
+    object-position: 50% 52%;
+    transform: scale(1.28);
+}
+
+.project-img-me {
+    object-position: 50% 48%;
+    transform: scale(1.18);
+}
+
+.project-img-fish {
+    object-position: 50% 52%;
+    transform: scale(1.32);
 }
 
 /* ***************************** */
