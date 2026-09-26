@@ -156,19 +156,30 @@ body {
     border-radius: calc(var(--radius) - 4px);
 }
 
+.thumbnail-crop {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: calc(var(--radius) - 4px);
+}
+
 .project-img-joker {
-    object-position: 50% 52%;
-    transform: scale(1.28);
+    height: 100%;
+    object-position: 50% 58%;
+    transform: scale(1.55);
 }
 
 .project-img-me {
-    object-position: 50% 48%;
-    transform: scale(1.18);
+    height: 100%;
+    object-position: 50% 50%;
+    transform: scale(1.35);
 }
 
 .project-img-fish {
-    object-position: 50% 52%;
-    transform: scale(1.32);
+    height: 100%;
+    object-position: 50% 55%;
+    transform: scale(1.6);
 }
 
 /* ***************************** */
