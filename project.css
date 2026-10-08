@@ -332,13 +332,20 @@ pre code, pre code {
     object-fit: initial;
 }
 
-.proj-video-container iframe {
+.proj-video-container iframe,
+.proj-video-container video {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     border: 0;
+}
+
+.proj-video-container video {
+    object-fit: cover;
+    display: block;
+    background: #000;
 }
 
 .proj-video-container a,
