@@ -32,6 +32,95 @@
             <iframe src="https://www.youtube.com/embed/czBsRTCnkSY" title="Robotic Arm project video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
         </div>
 
+        <div class="proj-code">
+            <h3>Code:</h3>
+            <pre><code># Setup:
+# Color Sensor on port D
+# Clamp motor on port B
+# Arm motors on ports A and F
+
+from hub import port
+import runloop
+import motor
+import color
+import color_sensor
+
+# Clamp closes in the positive direction and opens in the negative direction.
+CLAMP_CLOSE_DEGREES = 135
+CLAMP_OPEN_DEGREES = 100
+
+# Arm movement amounts.
+ARM_TO_BALL_DEGREES = 40
+ARM_TO_OTHER_SIDE_DEGREES = 180
+ARM_RETURN_UPRIGHT_DEGREES = 80
+
+# Motor speeds in degrees per second.
+CLAMP_SPEED = 80
+ARM_SPEED = 150
+
+async def main():
+    # Keep repeating the ball-moving sequence.
+    while True:
+        # Wait until the sensor sees no recognized color.
+        while color_sensor.color(port.D) != color.UNKNOWN:
+            await runloop.sleep_ms(50)
+
+        # Start when the sensor recognizes a color as a ball is placed.
+        while color_sensor.color(port.D) == color.UNKNOWN:
+            await runloop.sleep_ms(50)
+
+        # Give the person time to move their hand away.
+        await runloop.sleep_ms(2000)
+
+        # Move both arm motors toward the ball.
+        await motor.run_for_degrees(port.A, ARM_TO_BALL_DEGREES, ARM_SPEED)
+        await motor.run_for_degrees(port.F, ARM_TO_BALL_DEGREES, ARM_SPEED)
+
+        # Close the clamp and hold its position while carrying the ball.
+        await motor.run_for_degrees(
+            port.B,
+            CLAMP_CLOSE_DEGREES,
+            CLAMP_SPEED,
+            stop=motor.HOLD
+        )
+
+        # Carry the ball to the other side.
+        await motor.run_for_degrees(
+            port.A,
+            -ARM_TO_OTHER_SIDE_DEGREES,
+            ARM_SPEED
+        )
+        await motor.run_for_degrees(
+            port.F,
+            -ARM_TO_OTHER_SIDE_DEGREES,
+            ARM_SPEED
+        )
+
+        # Open the clamp to release the ball.
+        await motor.run_for_degrees(
+            port.B,
+            -CLAMP_OPEN_DEGREES,
+            CLAMP_SPEED
+        )
+
+        # Immediately move the arm back toward its upright position.
+        await motor.run_for_degrees(
+            port.A,
+            ARM_RETURN_UPRIGHT_DEGREES,
+            ARM_SPEED
+        )
+        await motor.run_for_degrees(
+            port.F,
+            ARM_RETURN_UPRIGHT_DEGREES,
+            ARM_SPEED
+        )
+
+        # Wait before the next cycle; the loop then checks for the next ball.
+        await runloop.sleep_ms(10000)
+
+runloop.run(main())</code></pre>
+        </div>
+
     </div>
 
 </body>

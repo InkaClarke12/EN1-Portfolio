@@ -32,6 +32,68 @@
             <iframe src="https://www.youtube.com/embed/0D9IFR8n3wM" title="Astronaut Tools project video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
         </div>
 
+        <div class="proj-code">
+            <h3>Code:</h3>
+            <pre><code># Start your new code here!
+# Setup:
+# Force Sensor: port F
+# Motor: port D
+
+from hub import port
+import runloop
+import motor
+import force_sensor
+
+# Maximum force reading and motor duty cycle are both scaled to 100.
+DOUBLE_PRESS_WINDOW_MS = 600
+
+async def main():
+    # Start in the unscrewing direction.
+    direction = 1
+
+    # Track force-sensor press and release events.
+    previous_pressed = False
+    waiting_for_second_press = False
+    time_since_first_press = 0
+
+    # Keep checking the sensor and controlling the motor.
+    while True:
+        # Check whether the force sensor is being pressed.
+        pressed_now = force_sensor.pressed(port.F)
+
+        # Count a new press when the sensor changes from released to pressed.
+        if pressed_now and not previous_pressed:
+            if waiting_for_second_press:
+                # A second quick press reverses the motor direction.
+                direction = -direction
+                waiting_for_second_press = False
+            else:
+                # Start the timer for a possible second press.
+                waiting_for_second_press = True
+                time_since_first_press = 0
+
+        # Remember the sensor state for the next check.
+        previous_pressed = pressed_now
+
+        # Cancel the double-press window if it has expired.
+        if waiting_for_second_press:
+            time_since_first_press = time_since_first_press + 20
+            if time_since_first_press > DOUBLE_PRESS_WINDOW_MS:
+                waiting_for_second_press = False
+
+        # Convert force 0–100 to motor power 0–10000.
+        force_level = force_sensor.force(port.F)
+        motor_power = force_level * 100
+
+        # Apply the selected direction; force 100 gives full power (10000).
+        motor.set_duty_cycle(port.D, direction * motor_power)
+
+        # Pause briefly before checking the sensor again.
+        await runloop.sleep_ms(20)
+
+runloop.run(main())</code></pre>
+        </div>
+
     </div>
 
 </body>
