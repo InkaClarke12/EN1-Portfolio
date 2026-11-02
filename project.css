@@ -348,6 +348,10 @@ pre code, pre code {
     background: #000;
 }
 
+.proj-video-container video.video-contain {
+    object-fit: contain;
+}
+
 .proj-video-container a,
 .proj-video-container img {
     position: absolute;
