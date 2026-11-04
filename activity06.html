@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Activity 6: Machine Learning with the Nearest Neighbor Algorithm</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./project.css">
+</head>
+<body>
+
+    <header class="header">
+        <nav class="navbar">
+            <a href="./index.html" class="active">Home</a>
+        </nav>
+    </header>
+
+    <div class="proj-container">
+
+        <h1 class="proj-header">Project Portfolio</h1>
+
+        <div class="proj-img-container">
+            <img src="https://img.youtube.com/vi/7PLVnmixCxc/hqdefault.jpg" alt="Video thumbnail for the distance sensor classifier activity">
+        </div>
+
+        <h2 class="proj-header">Activity 6: Machine Learning with the Nearest Neighbor Algorithm</h2>
+
+        <div class="proj-desc">
+            <p>This activity uses a simple machine-learning approach called the nearest neighbor algorithm. The program stores seven valid distance readings alongside their motor positions, then classifies each new reading by finding the closest saved example and moving the motor to its paired position.</p>
+        </div>
+
+        <div class="proj-video-container">
+            <iframe src="https://www.youtube.com/embed/7PLVnmixCxc" title="Distance sensor classifier activity video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+
+        <div class="proj-code">
+            <h3>Code:</h3>
+            <pre><code># Setup:
+# Distance sensor on port B.
+# Motor on port D.
+# Force sensor on port E.
+#
+# Before each training press, put the motor in the position for that example:
+# clockwise/right for tall, counterclockwise/left for low.
+
+from hub import port, light_matrix, sound
+import runloop
+import motor
+import distance_sensor
+import force_sensor
+
+# Collect seven valid training examples.
+TRAINING_EXAMPLES = 7
+
+async def main():
+    # Store each distance beside its matching motor position.
+    saved_distances = []
+    saved_motor_positions = []
+
+    # Keep collecting until seven valid examples have been saved.
+    while len(saved_distances) &lt; TRAINING_EXAMPLES:
+        # Wait for a press on the force sensor.
+        while not force_sensor.pressed(port.E):
+            await runloop.sleep_ms(20)
+
+        # Read the distance and the motor's current position.
+        distance = distance_sensor.distance(port.B)
+        position = motor.absolute_position(port.D)
+
+        # Save the pair and give a beep and visual cue for a valid reading.
+        if distance != -1:
+            saved_distances.append(distance)
+            saved_motor_positions.append(position)
+
+            # Show the number of the point that was just saved.
+            await light_matrix.write(str(len(saved_distances)))
+
+            # Beep once to confirm the point was saved.
+            await sound.beep(880, 150, 100)
+
+        # Wait for the force sensor to be released before accepting another press.
+        while force_sensor.pressed(port.E):
+            await runloop.sleep_ms(20)
+
+    # Use each later force-sensor press to classify a new distance.
+    while True:
+        # Wait for a press to request a classification.
+        while not force_sensor.pressed(port.E):
+            await runloop.sleep_ms(20)
+
+        # Read the new distance from the sensor.
+        new_distance = distance_sensor.distance(port.B)
+
+        # Only classify when the sensor returns a valid distance.
+        if new_distance != -1:
+            # Start by treating the first saved example as the nearest one.
+            nearest_index = 0
+            smallest_difference = abs(new_distance - saved_distances[0])
+
+            # Compare the new distance with the remaining saved examples.
+            for example_index in range(1, len(saved_distances)):
+                difference = abs(
+                    new_distance - saved_distances[example_index]
+                )
+
+                # Remember the example with the smallest distance difference.
+                if difference &lt; smallest_difference:
+                    smallest_difference = difference
+                    nearest_index = example_index
+
+            # Move the motor to the position paired with the nearest example.
+            await motor.run_to_absolute_position(
+                port.D,
+                saved_motor_positions[nearest_index],
+                300
+            )
+
+        # Wait for release so one press triggers only one classification.
+        while force_sensor.pressed(port.E):
+            await runloop.sleep_ms(20)
+
+runloop.run(main())</code></pre>
+        </div>
+
+    </div>
+
+</body>
+</html>
