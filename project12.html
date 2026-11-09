@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Project 12: Fruit Scanner</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./project.css">
+</head>
+<body>
+
+    <header class="header">
+        <nav class="navbar">
+            <a href="./index.html" class="active">Home</a>
+        </nav>
+    </header>
+
+    <div class="proj-container">
+
+        <h1 class="proj-header">Project Portfolio</h1>
+
+        <div class="proj-img-container">
+            <img src="https://img.youtube.com/vi/4skklMU_hzo/hqdefault.jpg" alt="Fruit Scanner project video thumbnail">
+        </div>
+
+        <h2 class="proj-header">Project 12: Fruit Scanner</h2>
+
+        <div class="proj-desc">
+            <p>This program collects 12 color-sensor samples and labels each one based on whether the handle is turned counterclockwise for an apple or clockwise for a banana. It then compares new RGBI readings with the training samples using a three-neighbor vote and moves the motor using the average recorded turn for the predicted fruit.</p>
+        </div>
+
+        <div class="proj-video-container">
+            <iframe src="https://www.youtube.com/embed/4skklMU_hzo?playsinline=1" title="Project 12: Fruit Scanner video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+
+        <div class="proj-code">
+            <h3>Code:</h3>
+            <pre><code># Start your new code here!
+# Setup: Color Sensor on C, Force Sensor on A, and motor/handle on E.
+# Collect six apple examples and six banana examples.
+# For each sample, hold the item near the Color Sensor, press the Force
+# Sensor, then turn the handle counterclockwise for apple or clockwise
+# for banana. Turn the handle once for each training sample.
+
+from hub import port, light_matrix, sound
+import runloop
+import motor
+import force_sensor
+import color_sensor
+
+# Collect twelve training samples in total.
+TRAINING_EXAMPLES = 12
+
+# Use the three closest examples to classify a new reading.
+K_NEIGHBORS = 3
+
+# Ignore small handle movements during training.
+MOTOR_MOVEMENT_THRESHOLD = 20
+
+# Each sample stores sensor readings, label, and signed handle movement.
+training_examples = []
+
+async def main():
+    # Announce that training is starting.
+    await light_matrix.write("TRAIN")
+
+    # Collect the requested number of training examples.
+    for example_number in range(TRAINING_EXAMPLES):
+        # Ask for an item to be presented.
+        await light_matrix.write("PRESS")
+
+        # Wait for the force sensor to be pressed.
+        while not force_sensor.pressed(port.A):
+            await runloop.sleep_ms(10)
+
+        # Record the four Color Sensor values for this item.
+        reading = color_sensor.rgbi(port.C)
+        red_value = reading[0]
+        green_value = reading[1]
+        blue_value = reading[2]
+        intensity_value = reading[3]
+
+        # Wait for the force sensor to be released before turning the handle.
+        while force_sensor.pressed(port.A):
+            await runloop.sleep_ms(10)
+
+        # Record the motor position before the handle is turned.
+        starting_position = motor.absolute_position(port.E)
+        await light_matrix.write("TURN")
+
+        # Wait until the motor has moved enough to measure a direction.
+        while abs(motor.absolute_position(port.E) - starting_position) < MOTOR_MOVEMENT_THRESHOLD:
+            await runloop.sleep_ms(10)
+
+        # Record the signed amount of handle movement.
+        signed_turn_degrees = motor.absolute_position(port.E) - starting_position
+
+        # Label counterclockwise movement as apple and clockwise as banana.
+        if signed_turn_degrees < 0:
+            fruit_label = "A"
+        else:
+            fruit_label = "B"
+
+        # Save the sensor values, fruit label, and handle movement.
+        training_examples.append(
+            (
+                red_value,
+                green_value,
+                blue_value,
+                intensity_value,
+                fruit_label,
+                signed_turn_degrees
+            )
+        )
+
+        # Beep and show the number of samples collected so far.
+        await sound.beep(880, 200, 100)
+        await light_matrix.write(str(example_number + 1))
+
+        # Wait briefly before starting the next example.
+        await runloop.sleep_ms(500)
+
+    # Announce that training is finished and scanning is starting.
+    await light_matrix.write("SCAN")
+
+    # Start with no previous classification.
+    previous_label = ""
+
+    # Continue scanning the sensor after training.
+    while True:
+        # Read the current item's Color Sensor values.
+        reading = color_sensor.rgbi(port.C)
+        red_value = reading[0]
+        green_value = reading[1]
+        blue_value = reading[2]
+        intensity_value = reading[3]
+
+        # Compare the current reading with each saved training example.
+        distances = []
+        for example in training_examples:
+            red_difference = red_value - example[0]
+            green_difference = green_value - example[1]
+            blue_difference = blue_value - example[2]
+            intensity_difference = intensity_value - example[3]
+
+            # Calculate the squared distance between the readings.
+            distance = (
+                red_difference * red_difference
+                + green_difference * green_difference
+                + blue_difference * blue_difference
+                + intensity_difference * intensity_difference
+            )
+
+            # Keep each distance with its matching example.
+            distances.append((distance, example))
+
+        # Put the closest training examples first.
+        distances.sort()
+
+        # Make sure the program does not request more neighbors than samples.
+        neighbors_to_check = K_NEIGHBORS
+        if neighbors_to_check > len(distances):
+            neighbors_to_check = len(distances)
+
+        # Count the apple and banana labels among the nearest examples.
+        apple_votes = 0
+        banana_votes = 0
+        for neighbor_number in range(neighbors_to_check):
+            if distances[neighbor_number][1][4] == "A":
+                apple_votes = apple_votes + 1
+            else:
+                banana_votes = banana_votes + 1
+
+        # Choose the fruit label with more votes.
+        if apple_votes > banana_votes:
+            current_label = "A"
+        else:
+            current_label = "B"
+
+        # Update the display and motor when the classification changes.
+        if current_label != previous_label:
+            # Show A for apple or B for banana.
+            await light_matrix.write(current_label)
+
+            # Find the average handle movement recorded for this fruit.
+            turn_total = 0
+            matching_sample_count = 0
+            for example in training_examples:
+                if example[4] == current_label:
+                    turn_total = turn_total + example[5]
+                    matching_sample_count = matching_sample_count + 1
+
+            # Use the average signed turn to move the motor.
+            if matching_sample_count > 0:
+                output_turn_degrees = int(turn_total / matching_sample_count)
+
+                # Skip the motor command if the recorded turns average to zero.
+                if output_turn_degrees != 0:
+                    await motor.run_for_degrees(
+                        port.E, output_turn_degrees, 200
+                    )
+
+            # Remember the classification to avoid repeating the motor move
+            # on every sensor reading of the same item.
+            previous_label = current_label
+
+        # Pause briefly, then scan again.
+        await runloop.sleep_ms(100)
+
+runloop.run(main())
+</code></pre>
+        </div>
+
+    </div>
+
+</body>
+</html>
